@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Dashboard de Temperatura - Music Vibe 🌡️</title>
+    <!-- Librería para el gráfico de líneas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fuente moderna -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a102f;
+            --card-bg: #2b1b4d;
+            --accent-pink: #ff4081;
+            --accent-cyan: #00e5ff;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            margin-bottom: 20px;
+        }
+
+        .player-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            max-width: 900px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Tarjeta izquierda: Reproductor */
+        .music-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 25px;
+            width: 300px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border: 3px solid var(--accent-pink);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .album-art {
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(135deg, #ff4081, #7c4dff);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 70px;
+            box-shadow: 0 8px 15px rgba(255, 64, 129, 0.4);
+            animation: pulse 2s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.03); }
+        }
+
+        .temp-display {
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin: 15px 0 5px 0;
+        }
+
+        .status-text {
+            color: #b3a2c7;
+            font-size: 14px;
+        }
+
+        /* Ecualizador animado */
+        .equalizer {
+            display: flex;
+            gap: 5px;
+            height: 30px;
+            align-items: flex-end;
+            margin-top: 15px;
+        }
+
+        .bar {
+            width: 6px;
+            background: var(--accent-pink);
+            border-radius: 3px;
+            animation: bounce 0.6s infinite alternate;
+        }
+
+        .bar:nth-child(2) { animation-delay: 0.2s; background: var(--accent-cyan); }
+        .bar:nth-child(3) { animation-delay: 0.4s; }
+        .bar:nth-child(4) { animation-delay: 0.1s; background: var(--accent-cyan); }
+
+        @keyframes bounce {
+            0% { height: 5px; }
+            100% { height: 28px; }
+        }
+
+        /* Tarjeta derecha: Gráfico */
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            flex: 1;
+            min-width: 300px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border: 3px solid var(--accent-cyan);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: var(--accent-pink);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-family: 'Fredoka', sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(255, 64, 129, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎧 Live Temp Playlist 🌡️</h1>
+
+    <div class="player-container">
+        <!-- Reproductor de Música -->
+        <div class="music-card">
+            <div class="album-art">🔥</div>
+            <div class="temp-display" id="currentTemp">-- °C</div>
+            <div class="status-text">Track: Medición en vivo (cada 3s)</div>
+
+            <!-- Barras del ecualizador -->
+            <div class="equalizer">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+
+            <div class="controls">
+                <button onclick="simularMedicion()">Simular Dato 🎲</button>
+            </div>
+        </div>
+
+        <!-- Gráfico en Vivo -->
+        <div class="chart-card">
+            <h3>📈 Historial de Ritmo Térmico</h3>
+            <canvas id="tempChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Configurar el gráfico de líneas con Chart.js
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        const maxDataPoints = 10;
+
+        const tempChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperatura (°C)',
+                    data: [],
+                    borderColor: '#00e5ff',
+                    backgroundColor: 'rgba(0, 229, 255, 0.15)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#ff4081',
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    y: { ticks: { color: '#ffffff' }, grid: { color: 'rgba(255,255,255,0.1)' }, suggestedMin: 15, suggestedMax: 35 }
+                },
+                plugins: {
+                    legend: { labels: { color: '#ffffff', font: { family: 'Fredoka' } } }
+                }
+            }
+        });
+
+        // Función para actualizar el gráfico y la carátula
+        function agregarTemperatura(valor) {
+            const ahora = new Date().toLocaleTimeString();
+            
+            // Actualizar la tarjeta izquierda
+            document.getElementById('currentTemp').innerText = valor + " °C";
+
+            // Agregar datos al gráfico
+            tempChart.data.labels.push(ahora);
+            tempChart.data.datasets[0].data.push(valor);
+
+            // Mantener solo los últimos N valores en el gráfico
+            if (tempChart.data.labels.length > maxDataPoints) {
+                tempChart.data.labels.shift();
+                tempChart.data.datasets[0].data.shift();
+            }
+
+            tempChart.update();
+        }
+
+        // Función de prueba/simulación
+        function simularMedicion() {
+            const tempSimulada = Math.floor(Math.random() * 8) + 22; // Genera entre 22°C y 29°C
+            agregarTemperatura(tempSimulada);
+        }
+
+        // Simulación automática cada 3 segundos (desactivar si conectas WebBluetooth o API)
+        setInterval(simularMedicion, 3000);
+    </script>
+</body>
+</html>
